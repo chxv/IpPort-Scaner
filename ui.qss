@@ -1,0 +1,56 @@
+/**********Title**********/
+QTitleLabel{
+        color:white;
+        background-color: rgb(45,45,45);
+        font: 100 10pt;
+}
+
+/**********Button**********/
+QTitleButton{
+        background-color: rgba(255, 255, 255, 0);
+        color: white;
+        border: 0px;
+        font: 100 10pt;
+}
+QTitleButton#MinMaxButton:hover{
+        background-color: #D0D0D1;
+        color: black;
+        border: 0px;
+        font: 100 10pt;
+}
+QTitleButton#CloseButton:hover{
+        background-color: #D32424;
+        color: white;
+        border: 0px;
+        font: 100 10pt;
+}
+
+/*  input lineEdit  */
+QLineEdit{
+        color:white;
+        background-color: rgba(43,43,43,255);
+}
+QTextBrowser#show_text{
+    color: #ffffff;
+    background-color: #323232;
+}
+QTextBrowser#show_text:hover{
+    color: #ffffff;
+    background-color:black;
+}
+QPushButton#start_end{
+    color: black;
+    background-color: white;
+
+}
+QPushButton#start_end:hover{
+    color:white;
+    background-color: black;
+}
+
+QWidget#app{
+    background-color: #c0c0c0;
+}
+QWidget#app:hover{
+    background-color: red;
+}
