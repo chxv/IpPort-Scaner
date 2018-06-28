@@ -2,8 +2,9 @@
 # -*- coding:utf-8 -*-
 
 import time
-from PyQt5.QtWidgets import QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QTextEdit, QLineEdit, QTextBrowser
-from PyQt5.QtCore import Qt, QPoint, QRect
+from PyQt5.QtWidgets import QWidget, QLabel, QPushButton, QVBoxLayout, \
+        QHBoxLayout, QTextEdit, QLineEdit, QTextBrowser, QProgressBar
+from PyQt5.QtCore import Qt, QPoint, QRect, QBasicTimer
 from PyQt5 import QtCore
 from PyQt5.QtGui import QFont, QCursor
 import ThreadPool
@@ -11,6 +12,7 @@ import ThreadPool
 from connect_scan import scan
 # endTag = '`'
 stopTag = True  # 一开始是stop
+thread_num = 300  # 线程池的线程数
 
 
 class QTitleLabel(QLabel):
@@ -266,14 +268,20 @@ class QUnFrameWindow(QWidget):
         self.btn_layout.addWidget(self.start_btn)
         self.btn_layout.addWidget(t)
         self.btn_layout.addWidget(self.end_btn)
-
-        # 主布局分为两个，上面的是两个布局加Textedit，下面是button布局
+        # 进度条
+        self.progressBar = QProgressBar(self)
+        self.progressBar.setFixedHeight(25)
+        self.progress = 0  # 进度值
+        self.timer = QBasicTimer()
+        # self.progressBar.setValue(50)
+        # 主布局分为两个，上面的是两个布局加Textedit，下面是button布局,底部进度条
         self.mid_layout = QHBoxLayout()
         self.mid_layout.addWidget(self.textview)
         self.mid_layout.addLayout(self.input_layout)
         self.main_widget_layout.addLayout(self.mid_layout)
         self.main_widget_layout.addWidget(t)
         self.main_widget_layout.addLayout(self.btn_layout)
+        self.main_widget_layout.addWidget(self.progressBar)
 
         # Debug
         self.line_text[0].setText('192.168.0.106')
@@ -281,16 +289,37 @@ class QUnFrameWindow(QWidget):
         self.line_text[2].setText('80')
         self.line_text[3].setText('10000')
 
+    def timerEvent(self, *args, **kwargs):
+        if not stopTag and self.progress < 100:  # 未结束的时候自动跑
+            self.progressBar.setValue(self.progress)
+            self.progress += 1
+
+    def calculateTime(self, startip, endip, startport, endport):
+        # 前两个str，后两个int
+        port_range = endport - startport + 1
+        S_ip = startip.split('.')
+        E_ip = endip.split('.')
+        Fourth_ip_range = int(E_ip[3]) - int(S_ip[3]) + 1
+        Third_ip_range = int(E_ip[2]) - int(S_ip[2]) + 1
+        t = port_range * Fourth_ip_range * Third_ip_range * 1.5
+        print('预计花费时间', t, '秒')
+        return t
+
     def start_scan(self):
         print('start')
         global stopTag
         stopTag = False
         self.start_btn.setEnabled(False)
         self.end_btn.setEnabled(True)
+        # 读取输入信息
         startip = self.line_text[0].text()
         endip = self.line_text[1].text()
         startport = self.line_text[2].text()
         endport = self.line_text[3].text()
+        # 启动计时器，负责计算进度时间
+        interval_time = self.calculateTime(startip, endip, int(startport), int(endport))  # 计算结果为秒
+        self.timer.start(interval_time*10/thread_num, self)  # 每隔多少秒增加进度，传入参数为毫秒除以线程数
+
         scan_range = (startip, endip, startport, endport)
         self.result = []  # 结果列表
         self.textview.setText(' 开始扫描...')
@@ -306,6 +335,9 @@ class QUnFrameWindow(QWidget):
     def stop_scan(self):
         global stopTag
         stopTag = True
+        self.progress = 0
+        self.progressBar.setValue(self.progress)  # 重设进度
+        self.timer.stop()  # 计时器停止
         self.end_btn.setEnabled(False)
         self.start_btn.setEnabled(True)
         print('stop')
@@ -319,17 +351,12 @@ class QUnFrameWindow(QWidget):
             self.textview.setText(signal_str + '\n' + '扫描中......')
             return
         self.textview.setText(signal_str + '\n' + '扫描完成')
-        # elif signal_str[-1] == endTag:
-        #     self.showText = ''
-        #     self.textview.setText(signal_str[0:-1])
-        #     return
-        # self.showText += signal_str
-        # self.textview.setText(self.showText)
+        self.progressBar.setValue(100)
 
 
 class WorkThread(QtCore.QThread):
     signal_str = QtCore.pyqtSignal(str)
-    scan_thread_pool = ThreadPool.ThreadPoolManager(300)  # 线程池
+    scan_thread_pool = ThreadPool.ThreadPoolManager(thread_num)  # 线程池
 
     def __init__(self, scan_range, result):
         super(WorkThread, self).__init__()
